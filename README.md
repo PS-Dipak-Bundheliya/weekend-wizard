@@ -2,7 +2,11 @@
 
 An AI-powered weekend planning assistant. Ask it to plan your weekend and it fetches real-time weather, book recommendations, jokes, dog pics, and trivia — all in one response.
 
-## Demo
+## Demo Recording
+
+[Watch the demo on Google Drive](https://drive.google.com/file/d/1UmhyXTNW78eXTqgBIFRJENDkpfl3EJVv/view?usp=sharing)
+
+## Example Prompt
 
 > *"Plan a cozy Saturday in New York at (40.7128, -74.0060). Include the current weather, 2 book ideas about mystery, one joke, and a dog pic."*
 
