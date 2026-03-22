@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weekend Wizard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 32px;
+      font-size: 0.9rem;
+    }
+
+    .input-area {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    textarea {
+      flex: 1;
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 10px;
+      color: #e2e8f0;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: #a78bfa; }
+
+    button {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      align-self: flex-end;
+      height: 46px;
+    }
+
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #output {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 12px;
+      padding: 16px 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-call   { background: #1e3a5f; color: #60a5fa; }
+    .badge-result { background: #14532d; color: #4ade80; }
+    .badge-final  { background: #3b1f6e; color: #c084fc; }
+    .badge-skip   { background: #3f2a00; color: #fbbf24; }
+    .badge-status { background: #1e293b; color: #94a3b8; }
+    .badge-error  { background: #450a0a; color: #f87171; }
+
+    .tool-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+
+    pre {
+      background: #0f1117;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.82rem;
+      color: #a5f3fc;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .final-answer {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    .status-text {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid #334155;
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .dog-img {
+      max-width: 280px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Weekend Wizard</h1>
+  <p class="subtitle">Powered by Mistral 7B + MCP tools</p>
+
+  <div class="input-area">
+    <textarea id="prompt" placeholder="Plan a cozy Saturday in New York at (40.7128, -74.0060). Include the current weather, 2 book ideas about mystery, one joke, and a dog pic."></textarea>
+    <button id="runBtn" onclick="runAgent()">Run</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    async function runAgent() {
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) return;
+
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+
+      const resp = await fetch('/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const msg = JSON.parse(line.slice(5).trim());
+          renderEvent(msg.event, msg.data, output);
+        }
+      }
+
+      btn.disabled = false;
+    }
+
+    function renderEvent(event, data, container) {
+      // remove any existing status spinner
+      const oldStatus = container.querySelector('.status-card');
+      if (oldStatus && event !== 'status') oldStatus.remove();
+
+      if (event === 'status') {
+        let card = container.querySelector('.status-card');
+        if (!card) {
+          card = document.createElement('div');
+          card.className = 'card status-card';
+          container.appendChild(card);
+        }
+        card.innerHTML = `
+          <div class="status-text">
+            <div class="spinner"></div>
+            ${escHtml(data)}
+          </div>`;
+        return;
+      }
+
+      if (event === 'tool_call') {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `tool-${data.tool}`;
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="badge badge-call">Tool Call</span>
+            <span class="tool-name">${escHtml(data.tool)}</span>
+          </div>
+          <div class="section-label">Arguments</div>
+          <pre>${escHtml(JSON.stringify(data.args, null, 2))}</pre>`;
+        container.appendChild(card);
+        return;
+      }
+
+      if (event === 'tool_result') {
+        const existing = document.getElementById(`tool-${data.tool}`);
+        const resultHtml = `
+          <div class="section-label" style="margin-top:12px">Result</div>
+          <span class="badge badge-result" style="margin-bottom:6px;display:inline-block">Success</span>
+          <pre>${escHtml(JSON.stringify(data.result, null, 2))}</pre>
+          ${extractDogUrl(data.result)}`;
+        if (existing) {
+          existing.innerHTML += resultHtml;
+        } else {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `<div class="card-header"><span class="badge badge-result">Result</span><span class="tool-name">${escHtml(data.tool)}</span></div>${resultHtml}`;
+          container.appendChild(card);
+        }
+        return;
+      }
+
+      if (event === 'final') {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="badge badge-final">Final Answer</span>
+          </div>
+          <div class="final-answer">${escHtml(data)}</div>`;
+        container.appendChild(card);
+        return;
+      }
+
+      if (event === 'skip') {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="badge badge-skip">Skipped</span>
+            <span class="tool-name">${escHtml(data.tool)}</span>
+          </div>
+          <div style="color:#64748b;font-size:0.85rem">${escHtml(data.reason)}</div>`;
+        container.appendChild(card);
+        return;
+      }
+
+      if (event === 'error') {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header"><span class="badge badge-error">Error</span></div>
+          <pre style="color:#f87171">${escHtml(data)}</pre>`;
+        container.appendChild(card);
+      }
+    }
+
+    function extractDogUrl(result) {
+      const url = typeof result === 'object' && result.message
+        ? result.message
+        : (typeof result === 'string' && result.includes('dog.ceo') ? result : null);
+      if (url && url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+        return `<img class="dog-img" src="${escHtml(url)}" alt="dog" />`;
+      }
+      return '';
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
